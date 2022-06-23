@@ -1,0 +1,26 @@
+{
+    "name": "factorio",
+    "version": "1.0.0",
+    "description": "",
+    "scripts": {
+        "test:calc:simple": "npx ts-node ./calc.simple.ts <calc.test.ini",
+        "test:grammar:simple": "npx ts-node ./grammar.simple.ts <calc.ini",
+        "test:grammar:middle": "npx ts-node ./grammar.simple.ts <grammar.ini",
+        "test:grammar:hard": "npx ts-node ./grammar.hard.ts"
+    },
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/node": "^16.11.25",
+        "@typescript-eslint/eslint-plugin": "4.33.0",
+        "@typescript-eslint/parser": "4.33.0",
+        "eslint": "7.32.0",
+        "eslint-config-airbnb-base": "14.2.1",
+        "eslint-plugin-import": "2.24.2",
+        "ts-node": "^10.4.0",
+        "typescript": "~4.4.3"
+    },
+    "dependencies": {
+        "chalk": "4.1.2"
+    }
+}
