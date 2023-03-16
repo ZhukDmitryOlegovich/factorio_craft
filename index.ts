@@ -62,6 +62,9 @@ const skip = [
 	'Kovarex-Anreicherungsprozess',
 	'Kernbrennstoff',
 	'Used_up_uranium_fuel_cell',
+	'Kovarex_enrichment_process',
+	'Nuclear_fuel_reprocessing',
+	'Uranium_fuel_cell',
 ];
 
 class FactorioElement {
@@ -323,7 +326,11 @@ const getAllUrls = async () => {
 const getAllNeedUrls = async () => (await getAllUrls()).filter((url) => {
 	const id = FactorioElement.getIdByUrl(url) || 'test';
 	const filename = `sp/${id}.png`;
-	readme += `### ${id.replace(/_/g, ' ')}\n[wiki](${url})\n![${id}](${filename})\n---\n`;
+	readme += `<details><summary>${id.replace(/_/g, ' ')} <a href="${url}">[wiki]</a></summary>
+
+![${id}](${filename})
+	
+</details>`;
 	return !fs.existsSync(filename);
 });
 
