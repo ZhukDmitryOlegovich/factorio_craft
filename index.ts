@@ -113,6 +113,17 @@ class FactorioLib {
 		// eslint-disable-next-line no-empty-function
 	) { }
 
+	async init() {
+		await Promise.all([
+			'Stone_furnace',
+			'Steel_furnace',
+			'Electric_furnace',
+			'Assembling_machine_1',
+			'Assembling_machine_2',
+			'Assembling_machine_3',
+		].map((name) => downloadImage(`https://wiki.factorio.com/images/thumb/${name}.png/32px-${name}.png`, this.prevPath)));
+	}
+
 	async addElementWithChildren(newURL: string): Promise<void> {
 		if (this.lib.has(newURL)) return;
 
@@ -256,11 +267,17 @@ npx ts-node .
 \`\`\`
 `;
 
+const verbose = (...message: any[]) => {
+	if (Number(process.env.VERBOSE)) {
+		console.log(...message);
+	}
+};
+
 const calcResult = async (url: string) => {
 	await factorioLib.addElementWithChildren(url);
-	console.dir(factorioLib, { depth: null });
+	verbose(factorioLib, { depth: null });
 	const g = factorioLib.makeGraphvis(url);
-	console.log(g.to_dot());
+	verbose(g.to_dot());
 	const id = factorioLib.lib.get(url)?.id || 'test';
 	const filename = `sp/${id}.png`;
 	g.output(
@@ -268,17 +285,22 @@ const calcResult = async (url: string) => {
 		filename,
 		console.error,
 	);
-	readme += `### ${id}\n![${id}](${filename})\n---\n`;
+	readme += `### ${id}\n[wiki](${url})\n![${id}](${filename})\n---\n`;
 };
 
 (async () => {
 	console.time('all');
+	console.time('init');
+	await factorioLib.init();
+	console.timeEnd('init');
 	for (const url of allURL) {
 		console.time(url);
 		// eslint-disable-next-line no-await-in-loop
 		await calcResult(url);
 		console.timeEnd(url);
 	}
+	console.time('readme');
 	fs.writeFileSync('README.md', readme);
+	console.timeEnd('readme');
 	console.timeEnd('all');
 })();
