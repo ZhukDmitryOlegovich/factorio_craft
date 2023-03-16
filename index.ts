@@ -48,6 +48,12 @@ const alias: Record<string, string | undefined> = {
 	Rail: 'Straight_rail',
 };
 
+const skip = [
+	'Uranium_processing',
+	'Nuclear_fuel',
+	'Uranium-235',
+];
+
 class FactorioElement {
 	// eslint-disable-next-line no-useless-constructor
 	constructor(
@@ -68,6 +74,11 @@ class FactorioElement {
 		return alias[id] ?? id;
 	}
 
+	static getIdByUrl(url: string) {
+		const id = url.split('/')[3];
+		return alias[id] ?? id;
+	}
+
 	get img() {
 		const { id } = this;
 		return `https://wiki.factorio.com/images/${id}.png`;
@@ -80,7 +91,12 @@ class FactorioElement {
 
 		const infobox = window.document.querySelector('.infobox');
 
-		if (!infobox) throw new Error('infobox is null');
+		if (!infobox || skip.includes(FactorioElement.getIdByUrl(url))) {
+			return new FactorioElement({
+				name: FactorioElement.getIdByUrl(url),
+				url,
+			}, undefined);
+		}
 
 		const allInfo = Array.from(infobox.getElementsByTagName('tbody'))
 			.map((e1) => Array.from(e1.children)
@@ -114,6 +130,7 @@ class FactorioLib {
 	) { }
 
 	async init() {
+		await downloadImage('https://wiki.factorio.com/images/Explosives.png');
 		await Promise.all([
 			'Stone_furnace',
 			'Steel_furnace',
@@ -143,9 +160,10 @@ class FactorioLib {
 		]);
 	}
 
-	makeGraphvis(url: string): graphviz.Graph {
+	makeGraphvis(url: string): graphviz.Graph | null {
 		const elem = this.lib.get(url);
 		if (!elem) throw new Error('"url" undefined');
+		if (!elem.create?.cost.length) return null;
 
 		const g = graphviz.digraph('G');
 		g.addNode(elem.id);
@@ -178,6 +196,13 @@ class FactorioLib {
 		id, create, props: { url: url2 },
 	}: FactorioElement, costs: Record<string, Drob>) {
 		const node = (create?.cost.length ? g : g.getCluster('cluster')).getNode(id);
+
+		if (!node) {
+			// verboseDir(g);
+			verbose(url2);
+			throw new Error('not found node');
+		}
+
 		const img = path.join('.', this.prevPath, `${id}.png`);
 		let label2 = '';
 		if (create?.time) {
@@ -239,26 +264,6 @@ class FactorioLib {
 	}
 }
 
-const allURL = [
-	'https://wiki.factorio.com/Automation_science_pack/ru',
-	'https://wiki.factorio.com/Logistic_science_pack/ru',
-	'https://wiki.factorio.com/Military_science_pack/ru',
-	'https://wiki.factorio.com/Chemical_science_pack/ru',
-	'https://wiki.factorio.com/Production_science_pack/ru',
-	'https://wiki.factorio.com/Utility_science_pack/ru',
-	'https://wiki.factorio.com/Construction_robot/ru',
-	'https://wiki.factorio.com/Assembling_machine_1/ru',
-	'https://wiki.factorio.com/Assembling_machine_2/ru',
-	'https://wiki.factorio.com/Assembling_machine_3/ru',
-	'https://wiki.factorio.com/Transport_belt/ru',
-	'https://wiki.factorio.com/Fast_transport_belt/ru',
-	'https://wiki.factorio.com/Express_transport_belt/ru',
-	'https://wiki.factorio.com/Inserter/ru',
-	'https://wiki.factorio.com/Fast_inserter/ru',
-	'https://wiki.factorio.com/Stack_inserter/ru',
-	'https://wiki.factorio.com/Electric_mining_drill/ru',
-];
-
 const factorioLib = new FactorioLib();
 
 let readme = `
@@ -273,31 +278,66 @@ const verbose = (...message: any[]) => {
 	}
 };
 
+const verboseDir = (message: any) => {
+	if (Number(process.env.VERBOSE)) {
+		console.dir(message, { depth: null });
+	}
+};
+
 const calcResult = async (url: string) => {
 	await factorioLib.addElementWithChildren(url);
-	verbose(factorioLib, { depth: null });
+	verboseDir(factorioLib);
 	const g = factorioLib.makeGraphvis(url);
+	if (!g) return;
 	verbose(g.to_dot());
-	const id = factorioLib.lib.get(url)?.id || 'test';
+	const id = FactorioElement.getIdByUrl(url) || 'test';
 	const filename = `sp/${id}.png`;
 	g.output(
 		{ type: 'png', N: { shape: 'record' } },
 		filename,
 		console.error,
 	);
-	readme += `### ${id}\n[wiki](${url})\n![${id}](${filename})\n---\n`;
 };
+
+const getAllUrls = async () => {
+	const url = 'https://wiki.factorio.com/Main_Page';
+
+	const { data } = await axios.get<string>(url);
+
+	const { window } = new JSDOM(data, { url });
+
+	// eslint-disable-next-line no-undef
+	return Array.from(window.document.querySelectorAll('.factorio-icon')).map((e) => (e.firstChild as HTMLAnchorElement).href);
+};
+
+const getAllNeedUrls = async () => (await getAllUrls()).filter((url) => {
+	const id = FactorioElement.getIdByUrl(url) || 'test';
+	const filename = `sp/${id}.png`;
+	readme += `### ${id.replace(/_/g, ' ')}\n[wiki](${url})\n![${id}](${filename})\n---\n`;
+	return !fs.existsSync(filename);
+});
 
 (async () => {
 	console.time('all');
+	console.time('getAllUrls');
+	const allURL = await getAllNeedUrls();
+	console.timeEnd('getAllUrls');
 	console.time('init');
 	await factorioLib.init();
 	console.timeEnd('init');
+	let i = 0;
 	for (const url of allURL) {
-		console.time(url);
-		// eslint-disable-next-line no-await-in-loop
-		await calcResult(url);
-		console.timeEnd(url);
+		const timeMark = `(${++i}/${allURL.length}) ${url}`;
+		console.time(timeMark);
+		try {
+			// eslint-disable-next-line no-await-in-loop
+			await calcResult(url);
+		} catch (error) {
+			console.error('ERR:', url);
+			console.dir(factorioLib.lib.get(url), { depth: null });
+			throw error;
+		}
+		console.timeEnd(timeMark);
 	}
 	console.time('readme');
 	fs.writeFileSync('README.md', readme);
