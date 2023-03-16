@@ -250,7 +250,11 @@ const allURL = [
 
 const factorioLib = new FactorioLib();
 
-let readme = '';
+let readme = `
+\`\`\`bash
+npx ts-node .
+\`\`\`
+`;
 
 const calcResult = async (url: string) => {
 	await factorioLib.addElementWithChildren(url);
@@ -268,6 +272,7 @@ const calcResult = async (url: string) => {
 };
 
 (async () => {
+	console.time('all');
 	for (const url of allURL) {
 		console.time(url);
 		// eslint-disable-next-line no-await-in-loop
@@ -275,4 +280,5 @@ const calcResult = async (url: string) => {
 		console.timeEnd(url);
 	}
 	fs.writeFileSync('README.md', readme);
+	console.timeEnd('all');
 })();

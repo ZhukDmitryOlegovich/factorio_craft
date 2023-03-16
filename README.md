@@ -1,3 +1,7 @@
+
+```bash
+npx ts-node .
+```
 ### Automation_science_pack
 ![Automation_science_pack](sp/Automation_science_pack.png)
 ---
