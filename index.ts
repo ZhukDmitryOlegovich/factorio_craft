@@ -22,7 +22,13 @@ async function downloadImage(url: string, prevPath = 'buf') {
 
 	return new Promise((resolve, reject) => {
 		writer.on('finish', resolve);
-		writer.on('error', reject);
+		writer.on('error', () => {
+			try {
+				fs.unlinkSync(absPath);
+				// eslint-disable-next-line no-empty
+			} catch { }
+			reject();
+		});
 	});
 }
 
@@ -52,6 +58,10 @@ const skip = [
 	'Uranium_processing',
 	'Nuclear_fuel',
 	'Uranium-235',
+	'Uranium-238',
+	'Kovarex-Anreicherungsprozess',
+	'Kernbrennstoff',
+	'Used_up_uranium_fuel_cell',
 ];
 
 class FactorioElement {
@@ -62,7 +72,7 @@ class FactorioElement {
 			readonly url: string,
 		},
 		readonly create?: {
-			readonly cost: { url: string, count: number }[],
+			readonly cost: { url: string, count: number; }[],
 			readonly time: number,
 			readonly count: number,
 		},
