@@ -250,16 +250,21 @@ const allURL = [
 
 const factorioLib = new FactorioLib();
 
+let readme = '';
+
 const calcResult = async (url: string) => {
 	await factorioLib.addElementWithChildren(url);
-	// console.dir(factorioLib, { depth: null });
+	console.dir(factorioLib, { depth: null });
 	const g = factorioLib.makeGraphvis(url);
 	console.log(g.to_dot());
+	const id = factorioLib.lib.get(url)?.id || 'test';
+	const filename = `sp/${id}.png`;
 	g.output(
 		{ type: 'png', N: { shape: 'record' } },
-		`sp/${factorioLib.lib.get(url)?.id || 'test'}.png`,
+		filename,
 		console.error,
 	);
+	readme += `### ${id}\n![${id}](${filename})\n---\n`;
 };
 
 (async () => {
@@ -269,4 +274,5 @@ const calcResult = async (url: string) => {
 		await calcResult(url);
 		console.timeEnd(url);
 	}
+	fs.writeFileSync('README.md', readme);
 })();
